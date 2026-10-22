@@ -1,0 +1,460 @@
+{{ 'reviews.css' | asset_url | stylesheet_tag }}
+
+{% assign current_product = block.settings.product | default: product %}
+
+<div
+  class="rv-container"
+  id="shopify-review-app-widget"
+  data-product-id="{{ current_product.id }}"
+  data-product-title="{{ current_product.title | escape }}"
+  data-shop="{{ shop.permanent_domain }}"
+>
+  <!-- Modern Header & Rating Summary Card -->
+  <div class="rv-card-header">
+    <div class="rv-header-flex">
+      
+      <!-- Big Score & Stars -->
+      <div class="rv-score-box">
+        <div class="rv-big-number" id="rv-avg-rating">0.0</div>
+        <div class="rv-stars-wrapper">
+          <div class="rv-stars-gold" id="rv-summary-stars" style="color: {{ block.settings.star_color | default: '#F59E0B' }};">★★★★★</div>
+          <div class="rv-review-counter" id="rv-total-count">Based on 0 reviews</div>
+        </div>
+      </div>
+
+      <!-- Star Breakdown Bars -->
+      <div class="rv-breakdown-grid" id="rv-breakdown-bars">
+        {% for star in (1..5) reversed %}
+          <div class="rv-breakdown-row" data-star="{{ star }}">
+            <span>{{ star }} ★</span>
+            <div class="rv-bar-bg">
+              <div class="rv-bar-fill" id="rv-bar-{{ star }}" style="width: 0%; background-color: {{ block.settings.star_color | default: '#F59E0B' }};"></div>
+            </div>
+            <span id="rv-count-{{ star }}" style="font-size: 11px; color: #9ca3af; width: 20px;">0</span>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Write a Review Button -->
+      <div>
+        <button type="button" class="rv-btn-action" id="rv-toggle-form-btn">
+          ✍️ Write a Review
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modern Review Submission Popup Modal -->
+  <div id="rv-modal-overlay" class="rv-modal-overlay" style="display: none;">
+    <div class="rv-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; color: #111827;">Write a Customer Review</h3>
+        <button type="button" id="rv-close-modal-btn" style="background: none; border: none; font-size: 24px; color: #9ca3af; cursor: pointer; padding: 4px; line-height: 1;">✕</button>
+      </div>
+      
+      <div id="rv-verified-condition-notice" style="display: none; background: #FEF3C7; color: #92400E; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; border-left: 4px solid #F59E0B;">
+        🔒 <strong>Verified Purchase Required:</strong> Store policy allows reviews only from customers who purchased this product.
+      </div>
+
+      <div id="rv-form-alert" style="display: none; padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 18px;"></div>
+
+      <form id="rv-submit-form">
+        <!-- Interactive Stars -->
+        <div class="rv-form-field">
+          <label class="rv-form-label">Overall Rating *</label>
+          <div class="rv-interactive-stars" id="rv-star-picker">
+            <span class="rv-star-btn active" data-value="1">★</span>
+            <span class="rv-star-btn active" data-value="2">★</span>
+            <span class="rv-star-btn active" data-value="3">★</span>
+            <span class="rv-star-btn active" data-value="4">★</span>
+            <span class="rv-star-btn active" data-value="5">★</span>
+          </div>
+          <input type="hidden" id="rv-rating-input" name="rating" value="5" />
+        </div>
+
+        <!-- Name & Email -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="rv-form-field">
+            <label class="rv-form-label" for="rv-author-name">Your Name *</label>
+            <input type="text" id="rv-author-name" class="rv-text-input" required placeholder="e.g. Sarah Connor" />
+          </div>
+          <div class="rv-form-field">
+            <label class="rv-form-label" for="rv-author-email">Your Email *</label>
+            <input type="email" id="rv-author-email" class="rv-text-input" required placeholder="e.g. sarah@example.com" />
+            <small style="color: #6b7280; font-size: 11px; margin-top: 4px; display: block;">Used to verify your order purchase.</small>
+          </div>
+        </div>
+
+        <!-- Headline -->
+        <div class="rv-form-field">
+          <label class="rv-form-label" for="rv-review-title">Review Headline (Optional)</label>
+          <input type="text" id="rv-review-title" class="rv-text-input" placeholder="Sum up your experience in one sentence..." />
+        </div>
+
+        <!-- Review Body -->
+        <div class="rv-form-field">
+          <label class="rv-form-label" for="rv-review-body">Review Description *</label>
+          <textarea id="rv-review-body" class="rv-textarea-input" rows="4" required placeholder="What did you like or dislike about this product?"></textarea>
+        </div>
+
+        <!-- Media Attachments -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="rv-form-field">
+            <label class="rv-form-label" for="rv-image-url">Photo URL (Optional)</label>
+            <input type="url" id="rv-image-url" class="rv-text-input" placeholder="https://example.com/photo.jpg" />
+          </div>
+          <div class="rv-form-field">
+            <label class="rv-form-label" for="rv-video-url">Video Review Link (Optional)</label>
+            <input type="url" id="rv-video-url" class="rv-text-input" placeholder="https://youtube.com/... or MP4" />
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" id="rv-cancel-form-btn" style="background: #f3f4f6; border: none; padding: 12px 20px; border-radius: 999px; font-weight: 600; cursor: pointer; color: #4b5563;">
+            Cancel
+          </button>
+          <button type="submit" class="rv-btn-action" id="rv-submit-btn">
+            Post Review
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Filter Chips Bar -->
+  <div class="rv-filter-bar">
+    <button type="button" class="rv-chip active" data-filter="all">All Reviews (<span id="rv-chip-all-count">0</span>)</button>
+    <button type="button" class="rv-chip" data-filter="media">With Media 📷</button>
+    <button type="button" class="rv-chip" data-filter="5">5 Stars ★</button>
+    <button type="button" class="rv-chip" data-filter="4">4 Stars ★</button>
+    <button type="button" class="rv-chip" data-filter="verified">Verified Buyers 🛡️</button>
+  </div>
+
+  <!-- Customer Reviews List -->
+  <div class="rv-card-list" id="rv-reviews-list">
+    <div style="text-align: center; padding: 40px; color: #9ca3af; font-size: 15px;">Loading customer feedback...</div>
+  </div>
+
+  <!-- Modern White-label Watermark (hidden on Pro Plan) -->
+  <div class="rv-modern-watermark" id="rv-watermark">
+    <a href="https://shopify.com" target="_blank" rel="noopener">
+      Verified Reviews by <strong>ReviewApp</strong> ⭐
+    </a>
+  </div>
+</div>
+
+<!-- Image Lightbox Modal -->
+<div id="rv-lightbox" class="rv-lightbox-overlay" style="display: none;">
+  <img id="rv-lightbox-img" class="rv-lightbox-img" src="" alt="Customer Photo Enlarged" />
+</div>
+
+<script>
+(function() {
+  const container = document.getElementById('shopify-review-app-widget');
+  if (!container) return;
+
+  const productId = container.dataset.productId;
+  const productTitle = container.dataset.productTitle;
+  const shop = container.dataset.shop;
+
+  let allReviews = [];
+  let appSettings = {};
+  let activeFilter = 'all';
+
+  const modalOverlay = document.getElementById('rv-modal-overlay');
+  const toggleBtn = document.getElementById('rv-toggle-form-btn');
+  const closeBtn = document.getElementById('rv-close-modal-btn');
+  const cancelBtn = document.getElementById('rv-cancel-form-btn');
+  const submitForm = document.getElementById('rv-submit-form');
+  const starPicker = document.getElementById('rv-star-picker');
+  const ratingInput = document.getElementById('rv-rating-input');
+  const reviewsList = document.getElementById('rv-reviews-list');
+  const avgRatingEl = document.getElementById('rv-avg-rating');
+  const summaryStarsEl = document.getElementById('rv-summary-stars');
+  const totalCountEl = document.getElementById('rv-total-count');
+  const watermarkEl = document.getElementById('rv-watermark');
+  const alertEl = document.getElementById('rv-form-alert');
+  const verifiedNotice = document.getElementById('rv-verified-condition-notice');
+  const filterChips = document.querySelectorAll('.rv-chip');
+  const lightbox = document.getElementById('rv-lightbox');
+  const lightboxImg = document.getElementById('rv-lightbox-img');
+
+  // Modal Open & Close functions
+  function openModal() {
+    if (modalOverlay) {
+      modalOverlay.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeModal() {
+    if (modalOverlay) {
+      modalOverlay.style.display = 'none';
+      document.body.style.overflow = '';
+      if (alertEl) alertEl.style.display = 'none';
+    }
+  }
+
+  if (toggleBtn) toggleBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (modalOverlay && modalOverlay.style.display === 'flex') closeModal();
+      if (lightbox && lightbox.style.display === 'flex') lightbox.style.display = 'none';
+    }
+  });
+
+  // Star Picker
+  if (starPicker) {
+    const stars = starPicker.querySelectorAll('.rv-star-btn');
+    stars.forEach(star => {
+      star.addEventListener('click', function() {
+        const val = parseInt(this.dataset.value, 10);
+        ratingInput.value = val;
+        stars.forEach((s, idx) => {
+          if (idx < val) s.classList.add('active');
+          else s.classList.remove('active');
+        });
+      });
+    });
+  }
+
+  // Filter chips click
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', function() {
+      filterChips.forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      activeFilter = this.dataset.filter;
+      renderReviews();
+    });
+  });
+
+  // Load reviews from API
+  async function loadReviews() {
+    try {
+      let res = await fetch(`/apps/reviews-api/api/reviews?shop=${encodeURIComponent(shop)}&productId=${encodeURIComponent(productId)}`);
+      if (!res.ok) {
+        res = await fetch(`/api/reviews?shop=${encodeURIComponent(shop)}&productId=${encodeURIComponent(productId)}`);
+      }
+
+      const data = await res.json();
+      if (data) {
+        allReviews = data.reviews || [];
+        appSettings = data.settings || {};
+
+        // Update score
+        avgRatingEl.textContent = data.avgRating || '0.0';
+        totalCountEl.textContent = `Based on ${data.total || 0} reviews`;
+        const ratingNum = Math.round(parseFloat(data.avgRating || 0));
+        summaryStarsEl.textContent = '★'.repeat(ratingNum) + '☆'.repeat(5 - ratingNum);
+        document.getElementById('rv-chip-all-count').textContent = data.total || 0;
+
+        // Watermark logic
+        if (appSettings.removeWatermark) {
+          watermarkEl.style.display = 'none';
+        } else {
+          watermarkEl.style.display = 'block';
+        }
+
+        // Verified Condition Notice
+        if (appSettings.verifiedOnly && verifiedNotice) {
+          verifiedNotice.style.display = 'block';
+        }
+
+        // Calculate breakdown
+        const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        allReviews.forEach(r => { if (counts[r.rating] !== undefined) counts[r.rating]++; });
+        const total = allReviews.length || 1;
+        for (let i = 1; i <= 5; i++) {
+          const bar = document.getElementById(`rv-bar-${i}`);
+          const countEl = document.getElementById(`rv-count-${i}`);
+          if (bar) bar.style.width = `${Math.round((counts[i] / total) * 100)}%`;
+          if (countEl) countEl.textContent = counts[i];
+        }
+
+        renderReviews();
+      }
+    } catch(err) {
+      reviewsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No reviews yet. Be the first to review!</div>';
+    }
+  }
+
+  // Render cards based on active filter
+  function renderReviews() {
+    let list = allReviews.filter(r => {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'media') {
+        let hasImg = false;
+        try { hasImg = JSON.parse(r.images)?.length > 0; } catch(e){}
+        return hasImg || !!r.videoUrl;
+      }
+      if (activeFilter === 'verified') return r.isVerified;
+      return r.rating === parseInt(activeFilter, 10);
+    });
+
+    if (list.length === 0) {
+      reviewsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No reviews match this filter.</div>';
+      return;
+    }
+
+    reviewsList.innerHTML = list.map(r => {
+      let imagesHtml = '';
+      if (r.images) {
+        try {
+          const imgArr = JSON.parse(r.images);
+          if (Array.isArray(imgArr) && imgArr.length > 0) {
+            imagesHtml = `<div class="rv-thumbnails">${imgArr.map(src => `<img src="${src}" alt="Customer photo" class="rv-thumb-img" onclick="openReviewLightbox('${src}')">`).join('')}</div>`;
+          }
+        } catch(e) {}
+      }
+
+      let videoHtml = '';
+      if (r.videoUrl) {
+        videoHtml = `<a href="${r.videoUrl}" target="_blank" class="rv-video-button">▶ Watch Customer Video</a>`;
+      }
+
+      const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+      const dateStr = new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const initial = (r.customerName || 'U').charAt(0).toUpperCase();
+
+      return `
+        <div class="rv-single-card">
+          <div class="rv-card-top">
+            <div class="rv-reviewer-block">
+              <div class="rv-avatar">${initial}</div>
+              <div>
+                <div class="rv-reviewer-name">
+                  ${r.customerName}
+                  ${r.isVerified ? '<span class="rv-badge-verified">🛡️ Verified Buyer</span>' : ''}
+                </div>
+                <div class="rv-card-date">${dateStr}</div>
+              </div>
+            </div>
+            <div style="color: ${appSettings.accentColor || '#F59E0B'}; font-size: 17px; letter-spacing: 2px;">
+              ${stars}
+            </div>
+          </div>
+          ${r.title ? `<div class="rv-card-title">${r.title}</div>` : ''}
+          <p class="rv-card-body">${r.body}</p>
+          ${imagesHtml}
+          ${videoHtml}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Handle Review Submission
+  if (submitForm) {
+    submitForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('rv-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting feedback...';
+      alertEl.style.display = 'none';
+
+      const payload = {
+        shop,
+        productId,
+        productTitle,
+        customerName: document.getElementById('rv-author-name').value,
+        customerEmail: document.getElementById('rv-author-email').value,
+        rating: ratingInput.value,
+        title: document.getElementById('rv-review-title').value,
+        body: document.getElementById('rv-review-body').value,
+        images: document.getElementById('rv-image-url').value ? [document.getElementById('rv-image-url').value] : null,
+        videoUrl: document.getElementById('rv-video-url').value || null,
+      };
+
+      try {
+        let res = await fetch('/apps/reviews-api/api/submit-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 404) {
+          res = await fetch('/api/submit-review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        let result = {};
+        try {
+          result = await res.json();
+        } catch(jsonErr) {
+          result = { error: 'Invalid response from server.' };
+        }
+
+        if (res.ok && result.success) {
+          alertEl.style.backgroundColor = '#ecfdf5';
+          alertEl.style.color = '#065f46';
+          alertEl.style.border = '1px solid #a7f3d0';
+          alertEl.textContent = '🎉 ' + result.message;
+          alertEl.style.display = 'block';
+          submitForm.reset();
+          setTimeout(() => {
+            closeForm();
+            loadReviews();
+          }, 2500);
+        } else {
+          alertEl.style.backgroundColor = '#fef2f2';
+          alertEl.style.color = '#991b1b';
+          alertEl.style.border = '1px solid #fecaca';
+          alertEl.textContent = '⚠️ ' + (result.error || 'Failed to submit review.');
+          alertEl.style.display = 'block';
+        }
+      } catch(err) {
+        alertEl.style.backgroundColor = '#fef2f2';
+        alertEl.style.color = '#991b1b';
+        alertEl.style.border = '1px solid #fecaca';
+        alertEl.textContent = '⚠️ Could not connect to the review server. Please try again.';
+        alertEl.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Post Review';
+      }
+    });
+  }
+
+  loadReviews();
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Product Reviews & Media",
+  "target": "section",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "autofill": true
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Customer Reviews & Feedback"
+    },
+    {
+      "type": "color",
+      "id": "star_color",
+      "label": "Star Color",
+      "default": "#F59E0B"
+    }
+  ]
+}
+{% endschema %}
